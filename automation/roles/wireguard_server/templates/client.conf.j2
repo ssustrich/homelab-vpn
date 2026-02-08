@@ -1,0 +1,14 @@
+[Interface]
+PrivateKey = {{ client_private_key }}
+Address = {{ item.address }}
+DNS = {{ wg_client_dns }}
+
+[Peer]
+PublicKey = {{ wg_server_public_key }}
+Endpoint = {{ wg_server_endpoint }}:{{ wg_listen_port }}
+AllowedIPs = {{ (item.client_allowed_ips | default(["10.8.0.0/24", wg_lan_subnet])) | join(", ") }}
+{% if item.persistent_keepalive is defined %}
+PersistentKeepalive = {{ item.persistent_keepalive }}
+{% elif wg_persistent_keepalive is defined %}
+PersistentKeepalive = {{ wg_persistent_keepalive }}
+{% endif %}

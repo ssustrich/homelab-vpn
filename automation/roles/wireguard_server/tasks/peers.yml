@@ -1,0 +1,132 @@
+---
+- name: Ensure peers base directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard/peers
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Ensure per-peer directories exist
+  ansible.builtin.file:
+    path: "/etc/wireguard/peers/{{ item.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop: "{{ wg_peers | default([]) }}"
+
+- name: Check if peer private keys exist
+  ansible.builtin.stat:
+    path: "/etc/wireguard/peers/{{ item.name }}/private.key"
+  register: peer_key_stats
+  loop: "{{ wg_peers | default([]) }}"
+
+- name: Generate peer private keys (first run only)
+  ansible.builtin.shell: |
+    set -e
+    umask 077
+    wg genkey | tee /etc/wireguard/peers/{{ item.item.name }}/private.key > /dev/null
+  args:
+    executable: /bin/bash
+  when: not item.stat.exists
+  loop: "{{ peer_key_stats.results }}"
+  no_log: true
+
+- name: Generate peer public keys (first run only)
+  ansible.builtin.shell: |
+    set -e
+    wg pubkey < /etc/wireguard/peers/{{ item.name }}/private.key > /etc/wireguard/peers/{{ item.name }}/public.key
+  args:
+    executable: /bin/bash
+  loop: "{{ wg_peers | default([]) }}"
+  args:
+    creates: "/etc/wireguard/peers/{{ item.name }}/public.key"
+
+- name: Read all peer public keys
+  ansible.builtin.slurp:
+    src: "/etc/wireguard/peers/{{ item.name }}/public.key"
+  register: peer_pub_slurps
+  loop: "{{ wg_peers | default([]) }}"
+  no_log: true
+
+- name: Build peer public key map
+  ansible.builtin.set_fact:
+    wg_peer_pubkeys: >-
+      {{
+        dict(
+          (peer_pub_slurps.results | map(attribute='item.name') | list)
+          | zip(peer_pub_slurps.results | map(attribute='content') | map('b64decode') | map('trim') | list)
+        )
+      }}
+  no_log: true
+
+- name: Read all peer private keys (for client config generation)
+  ansible.builtin.slurp:
+    src: "/etc/wireguard/peers/{{ item.name }}/private.key"
+  register: peer_priv_slurps
+  loop: "{{ wg_peers | default([]) }}"
+  no_log: true
+
+- name: Build peer private key map
+  ansible.builtin.set_fact:
+    wg_peer_privkeys: >-
+      {{
+        dict(
+          (peer_priv_slurps.results | map(attribute='item.name') | list)
+          | zip(peer_priv_slurps.results | map(attribute='content') | map('b64decode') | map('trim') | list)
+        )
+      }}
+  no_log: true
+
+- name: Read server public key
+  ansible.builtin.slurp:
+    src: /etc/wireguard/server.pub
+  register: server_pub_slurp
+  no_log: true
+
+- name: Set server public key fact
+  ansible.builtin.set_fact:
+    wg_server_public_key: "{{ server_pub_slurp.content | b64decode | trim }}"
+  no_log: true
+
+# Render per-peer client configs locally (on your WSL control host)
+- name: Ensure local artifacts directory exists
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/artifacts/wireguard"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Render client configs to local artifacts/
+  ansible.builtin.template:
+    src: client.conf.j2
+    dest: "{{ playbook_dir }}/artifacts/wireguard/{{ item.name }}.conf"
+    mode: "0600"
+  loop: "{{ wg_peers | default([]) }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  vars:
+    client_private_key: "{{ wg_peer_privkeys[item.name] }}"
+
+- name: Check qrencode exists on localhost
+  ansible.builtin.command: qrencode --version
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  run_once: true
+
+- name: Generate QR codes (PNG) for client configs (localhost)
+  ansible.builtin.command: >
+    qrencode -t png -o {{ playbook_dir }}/artifacts/wireguard/{{ item.name }}.png
+    -r {{ playbook_dir }}/artifacts/wireguard/{{ item.name }}.conf
+  args:
+    creates: "{{ playbook_dir }}/artifacts/wireguard/{{ item.name }}.png"
+  loop: "{{ wg_peers | default([]) }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  no_log: true

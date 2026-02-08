@@ -1,0 +1,39 @@
+---
+# WireGuard server settings
+wg_interface: wg0
+wg_listen_port: 51820
+wg_server_address: "10.8.0.1/24"
+
+# Your LAN subnet to route over VPN (adjust!)
+wg_lan_subnet: "192.168.1.0/24"
+
+# Server endpoint clients will use
+# For LAN testing: 192.168.1.192
+# For public access: your public IP or DDNS name
+wg_server_endpoint: "wg-maxximillian.duckdns.org"
+
+# DNS pushed to clients (often your router)
+wg_client_dns: "192.168.1.1"
+
+# Optional: keepalive for NATed clients (phones)
+wg_persistent_keepalive: 25
+
+# Peers
+wg_peers:
+  - name: desktop
+    address: "10.8.0.2/32"
+    allowed_ips:
+      - "10.8.0.2/32"
+    # For desktop we typically only need to reach the VPN server at first
+    client_allowed_ips:
+      - "10.8.0.1/32"
+
+  - name: phone
+    address: "10.8.0.3/32"
+    allowed_ips:
+      - "10.8.0.3/32"
+    # Phone should reach VPN + LAN
+    client_allowed_ips:
+      - "10.8.0.0/24"
+      - "192.168.1.0/24"
+    persistent_keepalive: 25

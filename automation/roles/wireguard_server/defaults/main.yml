@@ -1,0 +1,16 @@
+---
+wg_interface: wg0
+wg_listen_port: 51820
+wg_server_address: "10.8.0.1/24"
+
+# The VM's LAN interface name (Debian cloud images often use ens18)
+# We'll auto-detect, but you can override here if needed.
+wg_lan_iface: ""
+
+# Routing/NAT
+wg_enable_forwarding: true
+wg_enable_nat: true
+
+# Optional: DNS handed to clients (usually your router)
+wg_client_dns: "192.168.1.1"
+

@@ -1,0 +1,16 @@
+[Interface]
+Address = {{ wg_server_address }}
+ListenPort = {{ wg_listen_port }}
+PrivateKey = {{ wg_server_private_key }}
+
+{% if wg_enable_nat %}
+PostUp   = iptables -A FORWARD -i {{ wg_interface }} -j ACCEPT; iptables -A FORWARD -o {{ wg_interface }} -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ lan_iface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i {{ wg_interface }} -j ACCEPT; iptables -D FORWARD -o {{ wg_interface }} -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ lan_iface }} -j MASQUERADE
+{% endif %}
+
+{% for p in wg_peers | default([]) %}
+[Peer]
+# {{ p.name }}
+PublicKey = {{ hostvars[inventory_hostname]["wg_peer_pubkeys"][p.name] }}
+AllowedIPs = {{ (p.allowed_ips | default([p.address])) | join(", ") }}
+{% endfor %}

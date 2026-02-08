@@ -1,0 +1,87 @@
+############################
+# Secrets & Artifacts
+############################
+
+# WireGuard client/server artifacts (contain private keys)
+artifacts/
+**/artifacts/
+*.conf
+*.png
+
+# WireGuard keys (in case paths change later)
+*.key
+*.pub
+
+############################
+# Ansible sensitive files
+############################
+
+# Vault files
+*.vault
+vault.yml
+vault.yaml
+
+# Retry files
+*.retry
+
+############################
+# Terraform
+############################
+
+# Local Terraform state
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+terraform.tfvars.json
+
+# Crash logs
+crash.log
+crash.*.log
+
+############################
+# Cloud-init
+############################
+
+# User-data / meta-data that may contain SSH keys
+cloud-init/
+user-data.yml
+meta-data.yml
+
+############################
+# SSH
+############################
+
+# SSH keys (just in case)
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+ansible
+ansible.pub
+*.pem
+
+############################
+# OS / Editor Noise
+############################
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/
+
+# Vim
+*.swp
+*.swo
+*~
+
+############################
+# Logs
+############################
+
+*.log
